@@ -13,7 +13,7 @@ export async function getDB() {
   });
 }
 
-// Helper: ArrayBuffer -> CryptoJS WordArray
+// ArrayBuffer -> CryptoJS WordArray
 function arrayBufferToWordArray(ab) {
   const u8 = new Uint8Array(ab);
   const words = [];
@@ -28,7 +28,7 @@ function arrayBufferToWordArray(ab) {
   return CryptoJS.lib.WordArray.create(words, u8.length);
 }
 
-// Helper: CryptoJS WordArray -> Uint8Array
+// WordArray -> Uint8Array
 function wordArrayToUint8Array(wordArray) {
   const { words, sigBytes } = wordArray;
   const u8 = new Uint8Array(sigBytes);
@@ -43,20 +43,17 @@ function wordArrayToUint8Array(wordArray) {
   return u8;
 }
 
-// Encrypt file (returns base64 string)
+// Encrypt file
 export async function encryptFile(file, pin) {
   const buffer = await file.arrayBuffer();
   const wordArray = arrayBufferToWordArray(buffer);
-  // AES encrypt returns a CipherParams object; toString() gives base64 by default
-  const encrypted = CryptoJS.AES.encrypt(wordArray, pin).toString();
-  return encrypted;
+  return CryptoJS.AES.encrypt(wordArray, pin).toString();
 }
 
-// Decrypt encryptedData (base64 string) with pin -> returns Blob
+// Decrypt file -> returns Blob
 export function decryptFile(encryptedData, pin, mimeType = "application/octet-stream") {
   try {
     const decrypted = CryptoJS.AES.decrypt(encryptedData, pin);
-    // If the password is wrong, decrypted.sigBytes may be 0 or content will be garbage
     if (!decrypted || decrypted.sigBytes === 0) {
       throw new Error("Decryption failed (wrong PIN or corrupt data).");
     }
@@ -67,20 +64,26 @@ export function decryptFile(encryptedData, pin, mimeType = "application/octet-st
   }
 }
 
-// Save encrypted file to DB
+// Save encrypted file
 export async function saveFile(filename, encryptedData, type) {
   const db = await getDB();
   await db.put("files", { filename, encryptedData, type });
 }
 
-// Load metadata for all files
+// Load all files
 export async function loadFiles() {
   const db = await getDB();
-  return await db.getAll("files"); // each item: { filename, encryptedData, type }
+  return await db.getAll("files");
 }
 
-// Get a single file entry from DB by filename
+// Get single file by filename
 export async function getFile(filename) {
   const db = await getDB();
-  return await db.get("files", filename); // returns object or undefined
+  return await db.get("files", filename);
+}
+
+// Delete file
+export async function deleteFile(filename) {
+  const db = await getDB();
+  await db.delete("files", filename);
 }

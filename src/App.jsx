@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useState, useEffect } from "react";
-import { encryptFile, saveFile, loadFiles, getFile, decryptFile } from "./storage";
+import { encryptFile, saveFile, loadFiles, getFile, decryptFile, deleteFile } from "./storage";
 
 function App() {
   const [pin, setPin] = useState("");
@@ -10,7 +10,6 @@ function App() {
 
   useEffect(() => {
     refreshList();
-    // cleanup preview URL on unmount
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
@@ -31,34 +30,23 @@ function App() {
     e.target.value = null;
   };
 
-  // open and preview (or download) a file
   const handleOpen = async (filename) => {
     const entry = await getFile(filename);
     if (!entry) return alert("File not found");
-    // If you prefer, prompt for PIN only when needed:
     const userPin = pin || prompt("Enter PIN to open file:");
     if (!userPin) return alert("PIN required");
 
     try {
       const blob = decryptFile(entry.encryptedData, userPin, entry.type);
-      // create object URL
       const url = URL.createObjectURL(blob);
 
-      // revoke previous preview URL
-      if (previewUrl) {
-        try { URL.revokeObjectURL(previewUrl); } catch(e) {}
-      }
-
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
       setPreviewUrl(url);
       setPreviewType(entry.type);
 
-      // For non-previewable types, open in new tab (downloads or show)
       const isImage = entry.type.startsWith("image/");
       const isVideo = entry.type.startsWith("video/");
-      if (!isImage && !isVideo) {
-        // open in new tab (browser will download or show depending on type)
-        window.open(url, "_blank");
-      }
+      if (!isImage && !isVideo) window.open(url, "_blank");
     } catch (err) {
       alert(err.message || "Failed to decrypt file. Wrong PIN?");
     }
@@ -78,10 +66,17 @@ function App() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      // revoke after short timeout
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (err) {
       alert(err.message || "Failed to decrypt file. Wrong PIN?");
+    }
+  };
+
+  const handleDelete = async (filename) => {
+    if (confirm(`Are you sure you want to delete ${filename}?`)) {
+      await deleteFile(filename);
+      refreshList();
+      alert(`${filename} deleted successfully.`);
     }
   };
 
@@ -104,9 +99,10 @@ function App() {
       <ul>
         {files.map((f) => (
           <li key={f.filename} style={{ marginBottom: 6 }}>
-            <strong>{f.filename}</strong> <em>({f.type})</em>{" "}
+            <strong>{f.filename}</strong> <em>({f.type})</em>
             <button onClick={() => handleOpen(f.filename)} style={{ marginLeft: 8 }}>Open/Preview</button>
             <button onClick={() => handleDownload(f.filename)} style={{ marginLeft: 6 }}>Download</button>
+            <button onClick={() => handleDelete(f.filename)} style={{ marginLeft: 6, color: 'red' }}>Delete</button>
           </li>
         ))}
       </ul>
