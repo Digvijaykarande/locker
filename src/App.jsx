@@ -1,6 +1,6 @@
 // src/App.jsx
 import { useState, useEffect } from "react";
-import { encryptFile, saveFile, loadFiles, getFile, decryptFile, deleteFile } from "./storage";
+import { encryptFile, saveFile, loadFiles, getFile, decryptFile, deleteFile } from "./storage"; // <-- added deleteFile
 
 function App() {
   const [pin, setPin] = useState("");
@@ -40,13 +40,18 @@ function App() {
       const blob = decryptFile(entry.encryptedData, userPin, entry.type);
       const url = URL.createObjectURL(blob);
 
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      if (previewUrl) {
+        try { URL.revokeObjectURL(previewUrl); } catch(e) {}
+      }
+
       setPreviewUrl(url);
       setPreviewType(entry.type);
 
       const isImage = entry.type.startsWith("image/");
       const isVideo = entry.type.startsWith("video/");
-      if (!isImage && !isVideo) window.open(url, "_blank");
+      if (!isImage && !isVideo) {
+        window.open(url, "_blank");
+      }
     } catch (err) {
       alert(err.message || "Failed to decrypt file. Wrong PIN?");
     }
@@ -99,10 +104,10 @@ function App() {
       <ul>
         {files.map((f) => (
           <li key={f.filename} style={{ marginBottom: 6 }}>
-            <strong>{f.filename}</strong> <em>({f.type})</em>
+            <strong>{f.filename}</strong> <em>({f.type})</em>{" "}
             <button onClick={() => handleOpen(f.filename)} style={{ marginLeft: 8 }}>Open/Preview</button>
             <button onClick={() => handleDownload(f.filename)} style={{ marginLeft: 6 }}>Download</button>
-            <button onClick={() => handleDelete(f.filename)} style={{ marginLeft: 6, color: 'red' }}>Delete</button>
+            <button onClick={() => handleDelete(f.filename)} style={{ marginLeft: 6, color: "red" }}>Delete</button>
           </li>
         ))}
       </ul>
